@@ -16,16 +16,23 @@ endif
 
 function! SyntaxCheckers_haskell_GetLocList()
     let ghcmod = 'ghc-mod ' . g:syntastic_haskell_checker_args
-    let makeprg =
-          \ "{ ".
-          \ ghcmod . " check ". shellescape(expand('%')) . "; " .
-          \ ghcmod . " lint " . shellescape(expand('%')) . ";" .
-          \ " }"
-    let errorformat = '%-G\\s%#,%f:%l:%c:%trror: %m,%f:%l:%c:%tarning: %m,'.
-                \ '%f:%l:%c: %trror: %m,%f:%l:%c: %tarning: %m,%f:%l:%c:%m,'.
-                \ '%E%f:%l:%c:,%Z%m,'
+    let makeprg = ghcmod . " check ". shellescape(expand('%')) . 
+      \ " | sed -e \"s/\\x00/\\n/g\" | sed -e \"s/  /__/g\"; "
+    let errorformat = '%-G\\s%#,%f:%l:%c:%trror: %m,'.
+                \     '%f:%l:%c:%tarning: %m,'.
+                \     '%f:%l:%c: %trror: %m,'.
+                \     '%f:%l:%c: %tarning: %m,%f:%l:%c:%m,'.
+                \     '%E%f:%l:%c:,%Z%m,'
 
-    return SyntasticMake({ 'makeprg': makeprg, 'errorformat': errorformat })
+    let output = split(system("bash -c '".makeprg."'"), '\n')
+
+    let l:errors = []
+    for x in output
+      let l:line = {'valid': 1, 'bufnr': 1, 'lnum': 1, 'cnum': 1, 'text': x}
+      call add(l:errors, l:line)
+    endfor
+
+    return l:errors
 endfunction
 
 function! SyntaxCheckers_lhaskell_GetLocList()
